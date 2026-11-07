@@ -42,6 +42,7 @@ composableKinds: PanelCfg: {
 					segmentSpacing:       number | *0.3
 					sparkline?:           bool | *true
 					shape:                "circle" | *"gauge"
+					zeroCentered?:         bool | *false
 					barWidthFactor:       number | *0.5
 					barShape:             "flat" | "rounded" | *"flat"
 					endpointMarker?:      "point" | "glow" | "none" | *"point"

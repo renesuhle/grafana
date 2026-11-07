@@ -34,6 +34,18 @@ export const plugin = new PanelPlugin<Options>(GaugePanel)
 
     addOrientationOption(builder, category);
 
+    builder.addBooleanSwitch({
+      path: 'zeroCentered',
+      name: t('gauge.config.zero-centered', 'Zero-centered gauge'),
+      description: t(
+        'gauge.config.zero-centered-description',
+        'Use a 180° semicircle with zero at 12 o’clock, negative values on the left and positive values on the right'
+      ),
+      category,
+      defaultValue: defaultOptions.zeroCentered,
+      showIf: (options: Options) => options.shape === 'gauge',
+    });
+
     builder
       .addRadio({
         path: 'sizing',
@@ -169,6 +181,7 @@ export const plugin = new PanelPlugin<Options>(GaugePanel)
         placeholder: t('gauge.config.neutral.placeholder', 'none'),
         step: 1,
       },
+      showIf: (options: Options) => !options.zeroCentered,
     });
 
     builder.addBooleanSwitch({

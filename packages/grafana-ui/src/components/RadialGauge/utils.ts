@@ -52,6 +52,20 @@ export function getValuePercentageForValue(fieldDisplay: FieldDisplay, value = f
   return (value - min) / (max - min);
 }
 
+/**
+ * Returns a field display with a symmetric range around zero.
+ * A minimum magnitude of 1 keeps an all-zero range usable.
+ */
+export function getZeroCenteredFieldDisplay(fieldDisplay: FieldDisplay): FieldDisplay {
+  const [min, max] = getFieldConfigMinMax(fieldDisplay);
+  const bound = Math.max(Math.abs(min), Math.abs(max), 1);
+
+  return {
+    ...fieldDisplay,
+    field: { ...fieldDisplay.field, min: -bound, max: bound },
+  };
+}
+
 export function getValueAngleForValue(
   fieldDisplay: FieldDisplay,
   startAngle: number,

@@ -111,6 +111,7 @@ const renderValueFactory = (options: Options) => {
         height={height}
         nameManualFontSize={options.text?.titleSize}
         neutral={options.neutral}
+        zeroCentered={options.zeroCentered}
         roundedBars={options.barShape === 'rounded'}
         segmentCount={options.segmentCount}
         segmentSpacing={options.segmentSpacing}

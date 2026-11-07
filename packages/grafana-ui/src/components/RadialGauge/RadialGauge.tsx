@@ -23,7 +23,12 @@ import { buildGradientColors, colorAtGradientPercent } from './colors';
 import { ARC_END, ARC_START, DEFAULT_DECIMALS } from './constants';
 import { GlowGradient, MiddleCircleGlow, SpotlightGradient } from './effects';
 import { type RadialShape, type RadialTextMode } from './types';
-import { calculateDimensions, getValueAngleForValue, getFormattedThresholds } from './utils';
+import {
+  calculateDimensions,
+  getFormattedThresholds,
+  getValueAngleForValue,
+  getZeroCenteredFieldDisplay,
+} from './utils';
 
 export interface RadialGaugeProps {
   values: FieldDisplay[];
@@ -78,6 +83,8 @@ export interface RadialGaugeProps {
    * this is most useful when you need to show positive and negative values on a gauge.
    */
   neutral?: number;
+  /** Render a 180° gauge with zero fixed at 12 o'clock and a symmetric value range. */
+  zeroCentered?: boolean;
   timeRange?: TimeRange;
 }
 
@@ -101,6 +108,7 @@ export function RadialGauge(props: RadialGaugeProps) {
     thresholdsBar: rawThresholdsBar = false,
     showScaleLabels = false,
     neutral,
+    zeroCentered = false,
     endpointMarker,
     values,
   } = props;
@@ -114,8 +122,10 @@ export function RadialGauge(props: RadialGaugeProps) {
     effectiveTextMode = vizCount > 1 || firstValue?.field?.displayName != null ? 'value_and_name' : 'value';
   }
 
-  const startAngle = shape === 'gauge' ? ARC_START : 0;
-  const endAngle = shape === 'gauge' ? ARC_END : 360;
+  const isZeroCentered = zeroCentered && shape === 'gauge';
+  const startAngle = isZeroCentered ? 270 : shape === 'gauge' ? ARC_START : 0;
+  const endAngle = isZeroCentered ? 90 : shape === 'gauge' ? ARC_END : 360;
+  const effectiveNeutral = isZeroCentered ? 0 : neutral;
 
   const defs: ReactNode[] = [];
   const graphics: ReactNode[] = [];
@@ -123,18 +133,21 @@ export function RadialGauge(props: RadialGaugeProps) {
 
   for (let barIndex = 0; barIndex < values.length; barIndex++) {
     const fieldDisplay = values[barIndex];
+    // A zero-centered gauge always uses a symmetric domain so zero maps to the
+    // midpoint of the 180° arc, regardless of the configured field min/max.
+    const gaugeFieldDisplay = isZeroCentered ? getZeroCenteredFieldDisplay(fieldDisplay) : fieldDisplay;
 
     // if min === max, the min and max thresholds will also be equal, which causes visual bugs.
-    const thresholdsBar = rawThresholdsBar && fieldDisplay.field.min !== fieldDisplay.field.max;
+    const thresholdsBar = rawThresholdsBar && gaugeFieldDisplay.field.min !== gaugeFieldDisplay.field.max;
     const { startValueAngle, endValueAngle, angleRange } = getValueAngleForValue(
-      fieldDisplay,
+      gaugeFieldDisplay,
       startAngle,
       endAngle,
-      neutral
+      effectiveNeutral
     );
 
-    const gradientStops = gradient ? buildGradientColors(theme, fieldDisplay) : undefined;
-    const color = fieldDisplay.display.color ?? FALLBACK_COLOR;
+    const gradientStops = gradient ? buildGradientColors(theme, gaugeFieldDisplay) : undefined;
+    const color = gaugeFieldDisplay.display.color ?? FALLBACK_COLOR;
     const dimensions = calculateDimensions(
       width,
       height,
@@ -156,13 +169,13 @@ export function RadialGauge(props: RadialGaugeProps) {
 
     if (endpointMarker === 'glow') {
       const endpointColor = gradientStops
-        ? colorAtGradientPercent(gradientStops, fieldDisplay.display.percent ?? 1).toHexString()
+        ? colorAtGradientPercent(gradientStops, gaugeFieldDisplay.display.percent ?? 1).toHexString()
         : color;
       defs.push(
         <SpotlightGradient
           key={spotlightGradientId}
           id={spotlightGradientId}
-          angle={endValueAngle + startAngle}
+          angle={isZeroCentered ? startValueAngle + endValueAngle + startAngle : endValueAngle + startAngle}
           dimensions={dimensions}
           roundedBars={roundedBars}
           theme={theme}
@@ -176,7 +189,7 @@ export function RadialGauge(props: RadialGaugeProps) {
         <RadialBarSegmented
           key={`radial-bar-segmented-${barIndex}-${gaugeId}`}
           dimensions={dimensions}
-          fieldDisplay={fieldDisplay}
+          fieldDisplay={gaugeFieldDisplay}
           angleRange={angleRange}
           startAngle={startAngle}
           startValueAngle={startValueAngle}
@@ -202,7 +215,7 @@ export function RadialGauge(props: RadialGaugeProps) {
           endpointMarkerGlowFilter={spotlightGradientRef}
           shape={shape}
           gradient={gradientStops}
-          fieldDisplay={fieldDisplay}
+          fieldDisplay={gaugeFieldDisplay}
           endpointMarker={endpointMarker}
         />
       );
@@ -224,20 +237,20 @@ export function RadialGauge(props: RadialGaugeProps) {
         <RadialText
           key="radial-text"
           textMode={effectiveTextMode}
-          displayValue={fieldDisplay.display}
+          displayValue={gaugeFieldDisplay.display}
           dimensions={dimensions}
           theme={theme}
           valueManualFontSize={props.valueManualFontSize}
           nameManualFontSize={props.nameManualFontSize}
           shape={shape}
-          sparkline={fieldDisplay.sparkline}
+          sparkline={gaugeFieldDisplay.sparkline}
         />
       );
 
       if (showScaleLabels || thresholdsBar) {
         const thresholds = getFormattedThresholds(
-          fieldDisplay.field.decimals ?? DEFAULT_DECIMALS,
-          fieldDisplay.field,
+          gaugeFieldDisplay.field.decimals ?? DEFAULT_DECIMALS,
+          gaugeFieldDisplay.field,
           theme
         );
 
@@ -246,13 +259,13 @@ export function RadialGauge(props: RadialGaugeProps) {
             <RadialScaleLabels
               key="radial-scale-labels"
               thresholds={thresholds}
-              thresholdsMode={fieldDisplay.field.thresholds?.mode ?? ThresholdsMode.Absolute}
-              fieldDisplay={fieldDisplay}
+              thresholdsMode={gaugeFieldDisplay.field.thresholds?.mode ?? ThresholdsMode.Absolute}
+              fieldDisplay={gaugeFieldDisplay}
               angleRange={angleRange}
               theme={theme}
               dimensions={dimensions}
               startAngle={startAngle}
-              neutral={neutral}
+              neutral={effectiveNeutral}
             />
           );
         }
@@ -262,9 +275,9 @@ export function RadialGauge(props: RadialGaugeProps) {
             <ThresholdsBar
               key="thresholds-bar"
               thresholds={thresholds}
-              thresholdsMode={fieldDisplay.field.thresholds?.mode}
+              thresholdsMode={gaugeFieldDisplay.field.thresholds?.mode}
               dimensions={dimensions}
-              fieldDisplay={fieldDisplay}
+              fieldDisplay={gaugeFieldDisplay}
               startAngle={startAngle}
               endAngle={endAngle}
               angleRange={angleRange}
@@ -277,10 +290,10 @@ export function RadialGauge(props: RadialGaugeProps) {
         }
       }
 
-      if (fieldDisplay.sparkline) {
+      if (gaugeFieldDisplay.sparkline) {
         sparklineElement = (
           <RadialSparkline
-            sparkline={fieldDisplay.sparkline}
+            sparkline={gaugeFieldDisplay.sparkline}
             dimensions={dimensions}
             theme={theme}
             color={color}

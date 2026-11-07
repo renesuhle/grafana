@@ -383,6 +383,7 @@ interface ExampleProps {
   unit?: string;
   showScaleLabels?: boolean;
   neutral?: number;
+  zeroCentered?: boolean;
 }
 
 const DEFAULT_THRESHOLDS: FieldConfig['thresholds'] = {
@@ -422,6 +423,7 @@ export function RadialGaugeExample({
   unit = 'percent',
   showScaleLabels,
   neutral,
+  zeroCentered,
 }: ExampleProps) {
   const theme = useTheme2();
 
@@ -502,6 +504,7 @@ export function RadialGaugeExample({
       showScaleLabels={showScaleLabels}
       endpointMarker={endpointMarker}
       neutral={neutral}
+      zeroCentered={zeroCentered}
     />
   );
 }

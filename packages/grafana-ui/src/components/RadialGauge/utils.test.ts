@@ -4,14 +4,15 @@ import type { RadialGaugeProps } from './RadialGauge';
 import { type RadialGaugeDimensions } from './types';
 import {
   calculateDimensions,
-  toRad,
-  getValueAngleForValue,
   drawRadialArcPath,
+  getAngleBetweenSegments,
   getFieldConfigMinMax,
   getFieldDisplayProcessor,
-  getAngleBetweenSegments,
   getOptimalSegmentCount,
   getThresholdPercentageValue,
+  getValueAngleForValue,
+  getZeroCenteredFieldDisplay,
+  toRad,
 } from './utils';
 
 describe('RadialGauge utils', () => {
@@ -245,6 +246,54 @@ describe('RadialGauge utils', () => {
 
     it('should handle negative angles', () => {
       expect(toRad(-90)).toBeCloseTo(-Math.PI, 5);
+    });
+  });
+
+  describe('getZeroCenteredFieldDisplay', () => {
+    it('should create a symmetric range using the larger absolute bound', () => {
+      const fieldDisplay = createFieldDisplay(25, -50, 100);
+      const result = getZeroCenteredFieldDisplay(fieldDisplay);
+
+      expect(result.field.min).toBe(-100);
+      expect(result.field.max).toBe(100);
+      expect(result.display.numeric).toBe(25);
+    });
+
+    it('should keep a usable range when both configured bounds are zero', () => {
+      const fieldDisplay = createFieldDisplay(0, 0, 0);
+      const result = getZeroCenteredFieldDisplay(fieldDisplay);
+
+      expect(result.field.min).toBe(-1);
+      expect(result.field.max).toBe(1);
+    });
+  });
+
+  describe('zero-centered gauge angles', () => {
+    it('should place negative values left of zero on a 180° arc', () => {
+      const fieldDisplay = getZeroCenteredFieldDisplay(createFieldDisplay(-50, -50, 100));
+      const result = getValueAngleForValue(fieldDisplay, 270, 90, 0);
+
+      expect(result.angleRange).toBe(180);
+      expect(result.startValueAngle).toBe(45);
+      expect(result.endValueAngle).toBe(45);
+    });
+
+    it('should place positive values right of zero on a 180° arc', () => {
+      const fieldDisplay = getZeroCenteredFieldDisplay(createFieldDisplay(50, -50, 100));
+      const result = getValueAngleForValue(fieldDisplay, 270, 90, 0);
+
+      expect(result.angleRange).toBe(180);
+      expect(result.startValueAngle).toBe(90);
+      expect(result.endValueAngle).toBe(45);
+    });
+
+    it('should place zero exactly at the top of the semicircle', () => {
+      const fieldDisplay = getZeroCenteredFieldDisplay(createFieldDisplay(0, -50, 100));
+      const result = getValueAngleForValue(fieldDisplay, 270, 90, 0);
+
+      expect(result.angleRange).toBe(180);
+      expect(result.startValueAngle).toBe(90);
+      expect(result.endValueAngle).toBe(0);
     });
   });
 
